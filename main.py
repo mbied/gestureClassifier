@@ -1,7 +1,9 @@
+from utility_functions import calc_responsibility
 import scipy.io as sio
 import matplotlib.pyplot as plt
 import numpy as np
 import pydmps.dmp_discrete
+import json
 
 def calc_similarity(w1, w2):
     return np.dot(np.transpose(w1),w2)/(np.linalg.norm(w1)*np.linalg.norm(w2))
@@ -13,6 +15,17 @@ def get_letter(drawings, alphabet_index, letter_index, set_index):
     letter = one_letter_set[set_index][0]
     data = np.transpose(letter[0][0])
     return data
+
+def get_mat_from_dict(dict):
+    D = len(dict)
+    n = len(dict[0])
+    M = np.zeros((D,n))
+    for i in range(D):
+        M[i] = dict[i].flatten()
+
+    return M
+
+
 
 
 
@@ -38,10 +51,10 @@ if __name__ == "__main__":
     fig2 = plt.figure()
 
     weights_per_dimension = 30
-    dic_weights = {}
+    weights_dict = {}
 
     for letter_index in range(number_used_characters):
-        dic_weights[letter_index] = {}
+        weights_dict[letter_index] = {}
         ax = fig.add_subplot(3, 3, letter_index + 1)
         ax2 = fig2.add_subplot(3, 3, letter_index + 1)
 
@@ -62,15 +75,36 @@ if __name__ == "__main__":
             ax2.plot(y_track[:, 0], y_track[:, 1],linestyle= '--', lw=1)
 
             #ax2.legend(['original trajectory', 'reproduced trajectory'])
-            w = np.reshape(dmp.w, (60,1))
-            dic_weights[letter_index][set_index] = w
+            w = np.reshape(dmp.w, (60))
+            weights_dict[letter_index][set_index] = w   # storing in dict instead of mat to be able
+                                                       # to change to unequal sizes of demonstration sets
+    sigma_dict = {}
+    mu_dict = {}
+    eigenvalues_dict = {}
+    dtype = np.float64
+    for letter_index in range(number_used_characters):
+        A = weights_dict[letter_index]
+        M = get_mat_from_dict(A)
+        C = np.cov(np.transpose(M))
+        min_eig = np.min(np.real(np.linalg.eigvals(C)))
 
-        #fig.tight_layout()
-        #fig.canvas.flush_events()
-        #time.sleep(0.01)
-        #if i == 25:
-        #    fig.set_size_inches(3, 3)
-    #plt.ioff()
+        # ensure matrix is positive semidefinite
+        if min_eig < 0:
+            C -= 10*min_eig * np.eye(*C.shape)
+
+
+
+        mu = np.mean(M, axis=0)
+        sigma_dict[letter_index] = C
+        mu_dict[letter_index] = mu
+        eigenvalues_dict[letter_index] = min_eig
+
+
+
+
+
+
+
 
 
 
@@ -94,8 +128,8 @@ if __name__ == "__main__":
             for letter_index_col in range(number_used_characters):
                 for set_index_col in range(used_set_size):
                     col = letter_index_col*used_set_size + set_index_col
-                    w1 = dic_weights[letter_index_row][set_index_row]
-                    w2 = dic_weights[letter_index_col][set_index_col]
+                    w1 = weights_dict[letter_index_row][set_index_row]
+                    w2 = weights_dict[letter_index_col][set_index_col]
                     sim = calc_similarity(w1, w2)
                     mat_similarity[row, col] = sim
 
@@ -107,7 +141,21 @@ if __name__ == "__main__":
 
 
     plt.show()
-    print('sucess')
+
+    statistics_dict = {}
+    statistics_dict['mu_dict'] = mu_dict
+    statistics_dict['sigma_dict'] = sigma_dict
+    statistics_dict['weights_dict'] = weights_dict
+
+    r = calc_responsibility(w, mu_dict, sigma_dict)
+
+    np.save('./data/sigma_dict.npy', sigma_dict)
+    np.save('./data/mu_dict.npy', mu_dict)
+
+    #with open('./data/meansigma_dicts.json','w') as outfile:
+     #   json.dump(statistics_dict, outfile)
+
+    print('success')
 
     #plt.plot(data[0], data[1])
     #plt.show()
