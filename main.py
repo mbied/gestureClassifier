@@ -1,39 +1,10 @@
-from utility_functions import calc_responsibility
+from utility_functions import calc_responsibility, calc_similarity, get_letter, get_mat_from_dict, error_plot
+
 import scipy.io as sio
 import matplotlib.pyplot as plt
 import numpy as np
 import pydmps.dmp_discrete
 import json
-
-def calc_similarity(w1, w2):
-    return np.dot(np.transpose(w1),w2)/(np.linalg.norm(w1)*np.linalg.norm(w2))
-
-def get_letter(drawings, alphabet_index, letter_index, set_index):
-    # drawings = D.get('drawings')
-    alphabet = drawings[alphabet_index][0]
-    one_letter_set = alphabet[letter_index][0]
-    letter = one_letter_set[set_index][0]
-    data = np.transpose(letter[0][0])
-    return data
-
-def get_mat_from_dict(dict):
-    D = len(dict)
-    n = len(dict[0])
-    M = np.zeros((D,n))
-    for i in range(D):
-        M[i] = dict[i].flatten()
-
-    return M
-
-
-
-
-
-def error_plot(ax, title, x_data, y_data, x_name, y_name):
-    ax.plot(x_data, y_data)
-    # do other stuff to the axes
-
-
 
 if __name__ == "__main__":
     D = sio.loadmat('data/data_background.mat')
@@ -99,24 +70,7 @@ if __name__ == "__main__":
         mu_dict[letter_index] = mu
         eigenvalues_dict[letter_index] = min_eig
 
-
-
-
-
-
-
-
-
-
-    #fig2, ax2 = plt.subplots()
-    #ax2.plot(data[0], data[1])
-    #ax2.set_title('DMP system - draw loaded character')
-    #ax2.plot(y_track[:, 0], y_track[:, 1], 'r--', lw=1)
-    #ax2.legend(['original trajectory', 'reproduced trajectory'])
-
     fig3, ax3 = plt.subplots()
-    #fig, _axs = plt.subplots(nrows=2, ncols=2)
-    #axs = _axs.flatten()
 
     np.random.seed(765955)
     similarity_mat_dim = number_used_characters*used_set_size
@@ -138,30 +92,16 @@ if __name__ == "__main__":
 
     plt.colorbar(ax3)
 
-
-
-    plt.show()
-
-    statistics_dict = {}
-    statistics_dict['mu_dict'] = mu_dict
-    statistics_dict['sigma_dict'] = sigma_dict
-    statistics_dict['weights_dict'] = weights_dict
-
     r = calc_responsibility(w, mu_dict, sigma_dict)
 
     np.save('./data/sigma_dict.npy', sigma_dict)
     np.save('./data/mu_dict.npy', mu_dict)
 
-    #with open('./data/meansigma_dicts.json','w') as outfile:
-     #   json.dump(statistics_dict, outfile)
+    fig4 = plt.figure()
+    ax4 = fig4.add_subplot(1, 1, 1)
+    ax4.bar(range(9), r, yerr=0.005)
+    ax4.set_xticklabels(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota'])
+    ax4.set_ylabel('probability of character')
 
+    plt.show()
     print('success')
-
-    #plt.plot(data[0], data[1])
-    #plt.show()
-
-    #fig, (ax1, ax2, ax3) = plt.subplots(ncols=3)
-
-    #error_plot(ax1, "Fig_1", [1, 2, 3], [[1, 1, 1], [2, 2, 2], [3, 3, 3]])
-    #error_plot(ax2, "Fig_2", [a, b, c], [[1, 1, 1], [2, 2, 2], [3, 3, 3]])
-    #error_plot(ax3, "Fig_3", [2a, 2b, 3c], [[1, 1, 1], [2, 2, 2], [3, 3, 3]])
